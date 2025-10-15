@@ -90,14 +90,20 @@ const Form = () => {
 
   const login = async (values, onSubmitProps) => {
     try {
-      const loggedInResponse = await fetch(apiConfig.endpoints.login, { // Use the configured endpoint
+      console.log('Attempting login to:', apiConfig.endpoints.login);
+      const loggedInResponse = await fetch(apiConfig.endpoints.login, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        },
         body: JSON.stringify(values),
       });
 
       if (!loggedInResponse.ok) {
-        throw new Error(`Login failed: ${loggedInResponse.status}`);
+        const errorText = await loggedInResponse.text();
+        console.error('Login response error:', errorText);
+        throw new Error(`Login failed: ${loggedInResponse.status} ${loggedInResponse.statusText}`);
       }
 
       const loggedIn = await loggedInResponse.json();
@@ -105,16 +111,16 @@ const Form = () => {
 
       if (loggedIn) {
         dispatch(
-            setLogin({
-              user: loggedIn.user,
-              token: loggedIn.token,
-            })
+          setLogin({
+            user: loggedIn.user,
+            token: loggedIn.token,
+          })
         );
         navigate("/home");
       }
     } catch (error) {
       console.error("Login error:", error);
-      alert(error.message);
+      alert(`Login error: ${error.message}`);
     }
   };
 

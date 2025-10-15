@@ -33,23 +33,31 @@ app.use(cors({
     const allowedOrigins = [
       "http://localhost:3000",
       "https://connectags-git-main-gaffar273s-projects.vercel.app",
-      "https://connectags.vercel.app"
+      "https://connectags.vercel.app",
+      "https://connect-git-main-gaffar273s-projects.vercel.app"
     ];
 
+    // Check if origin is in allowed list or is a Vercel app
     if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow all for now to debug
+      console.log('Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
-// Handle preflight requests
-app.options('*', cors());
+// Handle preflight requests explicitly
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.sendStatus(200);
+});
 
 app.use(express.json());
 app.use(helmet({
