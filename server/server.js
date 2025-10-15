@@ -24,39 +24,48 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 const app = express();
 
-/* MIDDLEWARE - ORDER MATTERS! */
-// CORS must be configured before other middleware
+/* MIDDLEWARE - CORS FIRST! */
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://connectags-git-main-gaffar273s-projects.vercel.app",
-    "https://connectags.vercel.app",
-    /\.vercel\.app$/ // Allow all vercel.app subdomains
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = [
+      "http://localhost:3000",
+      "https://connectags-git-main-gaffar273s-projects.vercel.app",
+      "https://connectags.vercel.app"
+    ];
+
+    if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all for now to debug
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 
 app.use(express.json());
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false
 }));
 app.use(morgan("common"));
 app.use(bodyParser.json({ limit: "30mb", extended: true }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
-app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 
-/* FILE STORAGE */
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "public/assets");
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname);
-  },
+/* FILE STORAGE - Use memory storage for Vercel */
+const storage = multer.memoryStorage(); // Changed from diskStorage
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
-const upload = multer({ storage });
 
 /* ROUTES WITH FILES */
 app.post("/auth/register", upload.single("picture"), register);
@@ -67,16 +76,18 @@ app.use("/auth", authRoutes);
 app.use("/users", userRoutes);
 app.use("/posts", postRoutes);
 
+/* ROOT ROUTE FOR TESTING */
+app.get("/", (req, res) => {
+  res.json({ message: "API is running" });
+});
+
 /* MONGOOSE SETUP */
 const PORT = process.env.PORT || 6001;
 mongoose
     .connect(process.env.MONGO_URL)
     .then(() => {
       app.listen(PORT, () => console.log(`Server Port: ${PORT}`));
-
-      /* ADD DATA ONE TIME */
-      // User.insertMany(users);
-      // Post.insertMany(posts);
     })
     .catch((error) => console.log(`${error} did not connect`));
 
+export default app;
