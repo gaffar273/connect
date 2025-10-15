@@ -23,13 +23,28 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config();
 const app = express();
+
+/* MIDDLEWARE - ORDER MATTERS! */
+// CORS must be configured before other middleware
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "https://connectags-git-main-gaffar273s-projects.vercel.app",
+    "https://connectags.vercel.app",
+    /\.vercel\.app$/ // Allow all vercel.app subdomains
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
-app.use(helmet());
-app.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(morgan("common"));
 app.use(bodyParser.json({ limit: "30mb", extended: true }));
 app.use(bodyParser.urlencoded({ limit: "30mb", extended: true }));
-app.use(cors());
 app.use("/assets", express.static(path.join(__dirname, "public/assets")));
 
 /* FILE STORAGE */
@@ -55,12 +70,13 @@ app.use("/posts", postRoutes);
 /* MONGOOSE SETUP */
 const PORT = process.env.PORT || 6001;
 mongoose
-  .connect(process.env.MONGO_URL )
-  .then(() => {
-    app.listen(PORT, () => console.log(`Server Port: ${PORT}`));
+    .connect(process.env.MONGO_URL)
+    .then(() => {
+      app.listen(PORT, () => console.log(`Server Port: ${PORT}`));
 
-    /* ADD DATA ONE TIME */
-    // User.insertMany(users);
-    // Post.insertMany(posts);
-  })
-  .catch((error) => console.log(`${error} did not connect`));
+      /* ADD DATA ONE TIME */
+      // User.insertMany(users);
+      // Post.insertMany(posts);
+    })
+    .catch((error) => console.log(`${error} did not connect`));
+
